@@ -8,16 +8,22 @@
 % --- Document Info ---
 \title{SAiDL Assignment 2026}
 \author{Joel Thomas}
-\date{\27th March 2026}
+\date{27th March 2026 Onwards}
 
 \begin{document}
 
 \maketitle
 Core-ML Task
-\section{Introduction}
+\section{Intro}
 This is my report on the Core-ML task of Attention-based Transformer, trained on WikiText-2. I'll be updating my progress here.
 
-\section{Methods}
+\section{Basic Transformer Baseline}
 From the 'Attention is All You Need' article:
+
+The core of the Transformer is the Scaled Dot-Product Attention:
+
+\begin{equation}
+    \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\end{equation}
 
 \end{document}
