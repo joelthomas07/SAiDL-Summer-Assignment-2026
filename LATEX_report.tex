@@ -32,4 +32,20 @@ From the 'Attention is All You Need' article, the core of the Transformer is the
     \item $d_k$ $\rightarrow$ Dimension of the keys
 \end{itemize}
 
+\section{Implementation Details}
+
+\subsection{Data Processing and Embeddings}
+\textbf{InputEmbedding}: Converts input tokens into dense vectors of dimension $d_{model}$ and scales them by $\sqrt{d_{model}}$ to stabilize gradients. It maps the discrete vocabulary to a continuous space suitable for neural network processing.
+
+\medskip % Adds a nice small gap
+\textbf{PositionalEncoding}: Injects information about the relative or absolute position of tokens using sine and cosine functions of different frequencies. This allows the model to utilize the order of the sequence, as the self-attention mechanism itself is permutation-invariant.
+
+\subsection{Model Components}
+\textbf{LayerNormalization}: Standardizes the inputs across the features dimension to a mean of zero and variance of one, followed by a learnable affine transformation. This ensures stable training and faster convergence by mitigating internal covariate shift.
+
+\medskip
+\textbf{FeedForwardBlock}: Consists of two linear transformations with a ReLU activation and dropout in between to process each position independently. It increases the model's capacity to learn complex patterns within the hidden representations.
+
+\medskip
+\textbf{MultiHeadAttentionBlock}: Projects the $Q, K,$ and $V$ into multiple subspaces to attend to information from different representation aspects simultaneously. It computes scaled dot-product attention in parallel across $h$ heads before concatenating and re-projecting the results.
 \end{document}
