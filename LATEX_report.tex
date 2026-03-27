@@ -18,16 +18,18 @@ Core-ML Task
 This is my report on the Core-ML task of Attention-based Transformer, trained on WikiText-2. I'll be updating my progress here.
 
 \section{Basic Transformer Baseline}
-From the 'Attention is All You Need' article:
-
-The core of the Transformer is the Scaled Dot-Product Attention:
+From the 'Attention is All You Need' article, the core of the Transformer is the Scaled Dot-Product Attention:
 
 \begin{equation}
     \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
 \end{equation}
-where 
-Q -> queries
-K -> keys
-V -> values
-{\d_k} -> dimension 
+
+\noindent where:
+\begin{itemize}
+    \item $Q$ $\rightarrow$ Queries
+    \item $K$ $\rightarrow$ Keys
+    \item $V$ $\rightarrow$ Values
+    \item $d_k$ $\rightarrow$ Dimension of the keys
+\end{itemize}
+
 \end{document}
