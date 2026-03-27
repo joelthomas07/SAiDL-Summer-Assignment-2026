@@ -33,6 +33,7 @@ From the 'Attention is All You Need' article, the core of the Transformer is the
 \end{itemize}
 
 \section{Implementation Details}
+I've used AI to explain what each class does in the Transformer code.
 
 \subsection{Data Processing and Embeddings}
 \textbf{InputEmbedding}: Converts input tokens into dense vectors of dimension $d_{model}$ and scales them by $\sqrt{d_{model}}$ to stabilize gradients. It maps the discrete vocabulary to a continuous space suitable for neural network processing.
@@ -47,5 +48,5 @@ From the 'Attention is All You Need' article, the core of the Transformer is the
 \textbf{FeedForwardBlock}: Consists of two linear transformations with a ReLU activation and dropout in between to process each position independently. It increases the model's capacity to learn complex patterns within the hidden representations.
 
 \medskip
-\textbf{MultiHeadAttentionBlock}: Projects the $Q, K,$ and $V$ into multiple subspaces to attend to information from different representation aspects simultaneously. It computes scaled dot-product attention in parallel across $h$ heads before concatenating and re-projecting the results.
+\textbf{MultiHeadAttentionBlock}: Projects the $Q, K,$ and $V$ into multiple subspaces to attend to information from different representation aspects simultaneously. It uses the previously-mentioned scaled dot-product attention in parallel across $h$ heads before concatenating and re-projecting the results.
 \end{document}
