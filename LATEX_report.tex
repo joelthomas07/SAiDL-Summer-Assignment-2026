@@ -49,4 +49,91 @@ I've used AI to explain what each class does in the Transformer code.
 
 \medskip
 \textbf{MultiHeadAttentionBlock}: Projects the $Q, K,$ and $V$ into multiple subspaces to attend to information from different representation aspects simultaneously. It uses the previously-mentioned scaled dot-product attention in parallel across $h$ heads before concatenating and re-projecting the results.
+
+\subsection{Parameters Used for WikiText-2 Training}
+
+The baseline Transformer was trained on the WikiText-2 dataset using the following configuration:
+
+\begin{table}[h]
+\centering
+\caption{Hyperparameters for Baseline Transformer Training}
+\begin{tabular}{lll}
+\hline
+\textbf{Parameter} & \textbf{Value} & \textbf{Description} \\
+\hline
+\multicolumn{3}{l}{\textit{Model Architecture}} \\
+\texttt{d\_model} & 128 & Embedding dimension \\
+\texttt{n\_heads} & 4 & Number of attention heads \\
+\texttt{n\_layers} & 4 & Number of decoder layers \\
+\texttt{d\_ff} & 512 & Feed-forward hidden dimension \\
+\texttt{dropout} & 0.1 & Dropout rate \\
+\hline
+\multicolumn{3}{l}{\textit{Sequence}} \\
+\texttt{seq\_len} & 1024 & Context window length (tokens) \\
+\texttt{vocab\_size} & 50{,}257 & GPT-2 BPE tokenizer vocabulary size \\
+\hline
+\multicolumn{3}{l}{\textit{Training}} \\
+\texttt{batch\_size} & 8 & Sequences per batch \\
+\texttt{grad\_accum\_steps} & 4 & Gradient accumulation steps \\
+\texttt{effective\_batch} & 32 & Effective batch size (batch $\times$ accum) \\
+\texttt{lr} & $3 \times 10^{-4}$ & Peak learning rate (AdamW) \\
+\texttt{weight\_decay} & 0.1 & AdamW weight decay \\
+\texttt{warmup\_steps} & 200 & Linear warmup steps \\
+\texttt{max\_steps} & 5{,}000 & Total training steps \\
+\texttt{eval\_interval} & 250 & Steps between validation evaluations \\
+\texttt{eval\_iters} & 50 & Batches averaged per validation estimate \\
+\hline
+\end{tabular}
+\label{tab:hyperparams}
+\end{table}
+
+\subsection{Results}
+
+Table \ref{tab:results} summarizes the training and validation metrics recorded 
+every 250 steps over the full 5{,}000-step training run on WikiText-2.
+
+\begin{table}[h]
+\centering
+\caption{Training and Validation Metrics Over 5{,}000 Steps}
+\begin{tabular}{rrrrrr}
+\hline
+\textbf{Step} & \textbf{Train Loss} & \textbf{Train PPL} & \textbf{Val Loss} & \textbf{Val PPL} & \textbf{Tok/s} \\
+\hline
+250  & 7.44 & 1696.88 & 7.47 & 1759.35 & 29{,}580 \\
+500  & 6.60 & 735.60  & 6.71 & 817.41  & 29{,}258 \\
+750  & 6.08 & 436.26  & 6.23 & 508.59  & 29{,}118 \\
+1000 & 5.76 & 316.06  & 6.03 & 417.27  & 29{,}117 \\
+1250 & 5.53 & 251.85  & 5.87 & 353.61  & 29{,}033 \\
+1500 & 5.33 & 206.69  & 5.77 & 319.71  & 29{,}094 \\
+1750 & 5.15 & 172.62  & 5.66 & 288.23  & 29{,}044 \\
+2000 & 5.03 & 153.57  & 5.62 & 276.00  & 29{,}040 \\
+2250 & 4.92 & 137.67  & 5.57 & 261.15  & 29{,}130 \\
+2500 & 4.86 & 129.11  & 5.54 & 255.69  & 29{,}052 \\
+2750 & 4.73 & 112.97  & 5.48 & 239.11  & 29{,}046 \\
+3000 & 4.70 & 109.93  & 5.48 & 240.87  & 29{,}107 \\
+3250 & 4.64 & 103.94  & 5.45 & 232.15  & 29{,}115 \\
+3500 & 4.61 & 100.23  & 5.44 & 231.49  & 29{,}081 \\
+3750 & 4.56 & 95.45   & 5.45 & 232.93  & 29{,}015 \\
+4000 & 4.56 & 96.05   & 5.44 & 230.93  & 29{,}011 \\
+4250 & 4.54 & 94.15   & 5.43 & 229.01  & 29{,}072 \\
+4500 & 4.56 & 95.62   & 5.45 & 232.38  & 29{,}101 \\
+4750 & 4.51 & 90.87   & 5.45 & 231.87  & 29{,}111 \\
+5000 & 4.55 & 95.02   & 5.41 & \textbf{224.70}  & 29{,}034 \\
+\hline
+\end{tabular}
+\label{tab:results}
+\end{table}
+
+The model converged to a best validation perplexity of \textbf{224.70} at step 
+5{,}000, with a corresponding training perplexity of 95.02. The gap between 
+training and validation perplexity indicates mild overfitting, which is expected 
+given the relatively small model size (13.71M parameters) and limited dataset. 
+Throughput remained highly stable throughout training at approximately 
+\textbf{29{,}000 tokens/sec} on an NVIDIA Tesla T4 GPU, demonstrating consistent 
+hardware utilization. Validation perplexity improved rapidly in the early stages 
+(dropping from 1759 to 255 in the first 2{,}500 steps) before plateauing around 
+229--232 for the final 1{,}500 steps, suggesting the model had largely converged 
+by step 3{,}500.
+
+
 \end{document}
