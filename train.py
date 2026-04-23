@@ -9,6 +9,7 @@ Usage:
 
 import os
 import math
+from tqdm.auto import tqdm
 import time
 import argparse
 import json
@@ -47,7 +48,7 @@ def download_and_tokenize(cfg):
 
     def encode_split(split_name):
         texts = "\n\n".join(
-            t for t in dataset[split_name]["text"] if t.strip()
+            t for t in dataset["validation" if split_name == "val" else split_name]["text"] if t.strip()
         )
         ids = tokenizer.encode(texts)
         arr = np.array(ids, dtype=np.uint16)
@@ -57,7 +58,7 @@ def download_and_tokenize(cfg):
         return len(ids)
 
     encode_split("train")
-    encode_split("validation")
+    encode_split("val")
     print("[data] Done.")
 
 
@@ -123,6 +124,8 @@ def train(cfg):
     from transformers import GPT2TokenizerFast
     tokenizer    = GPT2TokenizerFast.from_pretrained("gpt2")
     cfg.vocab_size = tokenizer.vocab_size   # 50257
+    import attention_variants  # must run before registry is read
+
     model = build_transformer(cfg).to(device)
 
     # --- optimiser (AdamW with weight-decay on weights only) ---
@@ -169,7 +172,7 @@ def train(cfg):
             _, loss = model(x, y)
             loss = loss / cfg.grad_accum_steps
             loss.backward()
-            accum_loss += loss.item()
+            accum_loss += loss.item() if loss.numel() == 1 else loss.mean().item()
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimiser.step()
@@ -253,7 +256,7 @@ def parse_args():
     parser.add_argument("--checkpoint_dir",    type=str,   default="checkpoints")
     parser.add_argument("--run_name",          type=str,   default="baseline")
     parser.add_argument("--attention_type",    type=str,   default="standard",
-                        choices=["standard"])
+                        choices=["standard", "sliding_window", "mqa", "linear"])
     parser.add_argument("--pos_encoding_type", type=str,   default="sinusoidal",
                         choices=["sinusoidal", "learned"])
     parser.add_argument("--device",            type=str,   default="cuda")
