@@ -24,9 +24,9 @@ class TransformerConfig:
     lr:               float = 3e-4
     weight_decay:     float = 0.1
     warmup_steps:     int   = 200
-    max_steps:        int   = 5000
-    eval_interval:    int   = 250
-    eval_iters:       int   = 50    # Batches averaged for validation perplexity
+    max_steps:        int   = 3000
+    eval_interval:    int   = 300
+    eval_iters:       int   = 5    # Batches averaged for validation perplexity
 
     # ── Paths ────────────────────────────────────────────────────────
     data_dir:       str = "data"
