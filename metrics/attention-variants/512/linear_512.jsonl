@@ -1,0 +1,10 @@
+{"step": 300, "train_loss": 6.89675350189209, "val_loss": 6.916995716094971, "val_ppl": 1009.2832617563587, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": null, "tokens_per_sec": 17957.65}
+{"step": 600, "train_loss": 6.0822985649108885, "val_loss": 6.238370418548584, "val_ppl": 512.0234468134988, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": 143.252950606, "tokens_per_sec": 17925.46}
+{"step": 900, "train_loss": 5.903072547912598, "val_loss": 6.048883724212646, "val_ppl": 423.6398670775389, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": 143.252950606, "tokens_per_sec": 17925.51}
+{"step": 1200, "train_loss": 5.710210132598877, "val_loss": 5.994887351989746, "val_ppl": 401.3714677469925, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": 144.2671055289993, "tokens_per_sec": 17876.15}
+{"step": 1500, "train_loss": 5.517667961120606, "val_loss": 5.755987071990967, "val_ppl": 316.07738472944544, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": 144.2671055289993, "tokens_per_sec": 17876.15}
+{"step": 1800, "train_loss": 5.288721561431885, "val_loss": 5.77473030090332, "val_ppl": 322.0575643703861, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": 146.00727036066624, "tokens_per_sec": 17735.48}
+{"step": 2100, "train_loss": 5.34952220916748, "val_loss": 5.702644348144531, "val_ppl": 299.65875627260095, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": 146.00727036066624, "tokens_per_sec": 17735.48}
+{"step": 2400, "train_loss": 5.2149029731750485, "val_loss": 5.73633394241333, "val_ppl": 309.9261187349194, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": 145.34504886749937, "tokens_per_sec": 17787.37}
+{"step": 2700, "train_loss": 5.202665042877197, "val_loss": 5.727595710754395, "val_ppl": 307.22971058915033, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": 145.34504886749937, "tokens_per_sec": 17787.37}
+{"step": 3000, "train_loss": 5.256236839294433, "val_loss": 5.687675285339355, "val_ppl": 295.2065513320641, "peak_memory_mb": 4466.0986328125, "avg_epoch_time_sec": 143.60530306759975, "tokens_per_sec": 17929.52}
