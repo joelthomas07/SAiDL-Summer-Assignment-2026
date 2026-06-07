@@ -1,0 +1,3 @@
+{"method":"lora","cola_mcc":0.630814,"trainable_params":296450,"effective_rank":192,"train_time_s":101.2}
+{"method":"adalora","cola_mcc":0.635993,"trainable_params":296450,"effective_rank":187,"train_time_s":82.9}
+{"method":"sora","cola_mcc":0.631131,"trainable_params":887234,"effective_rank":192,"train_time_s":281.6}
