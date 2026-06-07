@@ -4,7 +4,7 @@ for SAiDL inductions
 ### Project Structure
 
 ```text
-SAiDL-Summer-Assignment-2026
+.
 ├── core ml
 │   ├── attention_variants.py
 │   ├── config.py
@@ -37,13 +37,13 @@ SAiDL-Summer-Assignment-2026
 │   ├── positional_encodings.py
 │   ├── SAiDL_CoreML_Final.ipynb
 │   └── train.py
+├── sparsity and optimization
+│   ├── lora_sora_task3.png
+│   ├── peft_comparison_summary.jsonl
+│   ├── peft_training_results.jsonl
+│   ├── SAiDL_PEFT_part1.ipynb
+│   ├── SAiDL_PEFT_part2.ipynb
+│   └── SAiDL_PEFT_part3.ipynb
 ├── README.md
-├── report_final.pdf
-└── sparsity and optimization
-    ├── lora_sora_task3.png
-    ├── peft_comparison_summary.jsonl
-    ├── peft_training_results.jsonl
-    ├── SAiDL_PEFT_part1.ipynb
-    ├── SAiDL_PEFT_part2.ipynb
-    └── SAiDL_PEFT_part3.ipynb
+└── report_final.pdf
     ```
