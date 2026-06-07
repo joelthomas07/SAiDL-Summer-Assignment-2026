@@ -1,140 +1,414 @@
-\documentclass{article}
+\documentclass[11pt]{article}
 
-% --- Packages ---
-\usepackage[utf8]{inputenc} % Allows for special characters
-\usepackage{amsmath}        % For math symbols
-\usepackage{graphicx}       % For adding images later
+% ---------- packages ----------
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{caption}
 \usepackage{float}
+\usepackage{siunitx}
+\usepackage[table]{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{enumitem}
 
-% --- Document Info ---
-\title{SAiDL Assignment 2026}
-\author{Joel Thomas}
-\date{27th March 2026 Onwards}
+\graphicspath{{figs/}}
+\captionsetup{font=small,labelfont=bf}
+\sisetup{group-separator={,},group-minimum-digits=4}
+
+\title{\textbf{SAiDL Summer Assignment 2026}}
+\author{Joel Thomas \\ \texttt{2024ADPS0848G}}
+\date{May 2026}
 
 \begin{document}
-
 \maketitle
-Core-ML Task
-\section{Intro}
-This is my report on the Core-ML task of Attention-based Transformer, trained on WikiText-2. I'll be updating my progress here.
+\tableofcontents
+\newpage
 
-\section{Basic Transformer Baseline}
-From the 'Attention is All You Need' article, the core of the Transformer is the Scaled Dot-Product Attention:
+% =====================================================================
+\section{Core ML: Long-Context Sequence Modeling}
+\label{sec:coreml}
 
-\begin{equation}
-    \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
-\end{equation}
+% ---------------------------------------------------------------------
+\subsection{Overview}
+Long-context modeling is a central bottleneck in modern sequence models for two
+reasons. First, vanilla self-attention scales quadratically, $O(T^2)$, in
+sequence length $T$, so both compute and memory blow up as context grows.
+Second, standard learned positional embeddings cannot extrapolate: a model
+trained on $512$ positions has no representation for position $513$. This
+section studies architectural alternatives along three independent axes ---
+the \emph{attention mechanism}, the \emph{positional encoding}, and a
+\emph{convolutional hybrid} block layout --- evaluating each one at a time on
+the WikiText-2 language-modeling benchmark.
 
-\noindent where:
-\begin{itemize}
-    \item $Q$ $\rightarrow$ Queries
-    \item $K$ $\rightarrow$ Keys
-    \item $V$ $\rightarrow$ Values
-    \item $d_k$ $\rightarrow$ Dimension of the keys
-\end{itemize}
+The codebase is built around three registries (\texttt{ATTENTION\_REGISTRY},
+\texttt{POS\_ENCODING\_REGISTRY}, \texttt{ARCHITECTURE\_REGISTRY}) so that
+attention type, positional encoding, and block layout can be swapped by name
+without touching the model definition. This makes every variant below a
+controlled, one-axis-at-a-time change against the same baseline.
 
-\section{Baseline Model Transformer Details}
-I've used AI to explain what each class does in the Transformer code.
-
-\subsection{Data Processing and Embeddings}
-\textbf{InputEmbedding}: Converts input tokens into dense vectors of dimension $d_{model}$ and scales them by $\sqrt{d_{model}}$ to stabilize gradients. It maps the discrete vocabulary to a continuous space suitable for neural network processing.
-
-\medskip % Adds a nice small gap
-\textbf{PositionalEncoding}: Injects information about the relative or absolute position of tokens using sine and cosine functions of different frequencies. This allows the model to utilize the order of the sequence, as the self-attention mechanism itself is permutation-invariant.
-
-\subsection{Model Components}
-\textbf{LayerNormalization}: Standardizes the inputs across the features dimension to a mean of zero and variance of one, followed by a learnable affine transformation. This ensures stable training and faster convergence by mitigating internal covariate shift.
-
-\medskip
-\textbf{FeedForwardBlock}: Consists of two linear transformations with a ReLU activation and dropout in between to process each position independently. It increases the model's capacity to learn complex patterns within the hidden representations.
-
-\medskip
-\textbf{MultiHeadAttentionBlock}: Projects the $Q, K,$ and $V$ into multiple subspaces to attend to information from different representation aspects simultaneously. It uses the previously-mentioned scaled dot-product attention in parallel across $h$ heads before concatenating and re-projecting the results.
-
-\subsection{Parameters Used for WikiText-2 Training}
-
-The baseline Transformer was trained on the WikiText-2 dataset using the following configuration:
+% ---------------------------------------------------------------------
+\subsection{Dataset and Training Setup}
+All experiments use WikiText-2 tokenized with the GPT-2 BPE tokenizer
+(vocabulary $50{,}257$). The model is a decoder-only causal Transformer with
+pre-LayerNorm and a ReLU feed-forward block. Table~\ref{tab:setup} lists the
+configuration shared across runs.
 
 \begin{table}[H]
 \centering
-\caption{Hyperparameters for Baseline Transformer Training}
-\begin{tabular}{lll}
-\hline
-\textbf{Parameter} & \textbf{Value} & \textbf{Description} \\
-\hline
-\multicolumn{3}{l}{\textit{Model Architecture}} \\
-\texttt{d\_model} & 128 & Embedding dimension \\
-\texttt{n\_heads} & 4 & Number of attention heads \\
-\texttt{n\_layers} & 4 & Number of decoder layers \\
-\texttt{d\_ff} & 512 & Feed-forward hidden dimension \\
-\texttt{dropout} & 0.1 & Dropout rate \\
-\hline
-\multicolumn{3}{l}{\textit{Sequence}} \\
-\texttt{seq\_len} & 1024 & Context window length (tokens) \\
-\texttt{vocab\_size} & 50{,}257 & GPT-2 BPE tokenizer vocabulary size \\
-\hline
-\multicolumn{3}{l}{\textit{Training}} \\
-\texttt{batch\_size} & 8 & Sequences per batch \\
-\texttt{grad\_accum\_steps} & 4 & Gradient accumulation steps \\
-\texttt{effective\_batch} & 32 & Effective batch size (batch $\times$ accum) \\
-\texttt{lr} & $3 \times 10^{-4}$ & Peak learning rate (AdamW) \\
-\texttt{weight\_decay} & 0.1 & AdamW weight decay \\
-\texttt{warmup\_steps} & 200 & Linear warmup steps \\
-\texttt{max\_steps} & 5{,}000 & Total training steps \\
-\texttt{eval\_interval} & 250 & Steps between validation evaluations \\
-\texttt{eval\_iters} & 50 & Batches averaged per validation estimate \\
-\hline
+\caption{Core ML training configuration (from \texttt{config.py}).}
+\label{tab:setup}
+\begin{tabular}{ll}
+\toprule
+Item & Value \\
+\midrule
+Dataset & WikiText-2 \\
+Tokenizer & GPT-2 BPE \\
+Vocabulary size & \num{50257} \\
+Model type & Decoder-only causal Transformer \\
+Layers & 4 \\
+$d_{\text{model}}$ & 256 \\
+Attention heads & 8 \\
+$d_k$ & 32 \\
+$d_{\text{ff}}$ & 1024 ($4\times d_{\text{model}}$) \\
+Normalization & Pre-LayerNorm \\
+Feed-forward activation & ReLU \\
+Optimizer & AdamW (lr $3\times10^{-4}$, weight decay $0.1$) \\
+Warmup steps & 200 \\
+Max steps & 3000 \\
+Batch size & 8 \\
+Eval interval & every 300 steps (5 eval batches) \\
+Training contexts & 512, 1024, 2048 \\
+\bottomrule
 \end{tabular}
-\label{tab:hyperparams}
 \end{table}
 
-\subsection{Results}
+Validation perplexity is the exponentiated per-token cross-entropy,
+$\text{PPL}=\exp(L)$. Throughout this report, every perplexity number quoted is
+the \textbf{best validation PPL} observed across the run's evaluation
+checkpoints, not the final-step value. Because the attention, positional, and
+hybrid experiments share the same step budget (3000 steps) they are broadly
+comparable, but where a run terminated early this is stated explicitly.
 
-Table \ref{tab:results} summarizes the training and validation metrics recorded 
-every 250 steps over the full 5{,}000-step training run on WikiText-2.
+% ---------------------------------------------------------------------
+\subsection{Baseline Transformer}
+\label{sec:baseline}
+The baseline is a standard multi-head-attention decoder following
+Vaswani et al.~\cite{vaswani2017} with causal masking, trained at context
+length 1024 to establish a reference point. Its core attention computation is
+\[
+\text{Attention}(Q,K,V)=\operatorname{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}+M\right)V,
+\qquad
+M_{ij}=\begin{cases}0,& j\le i,\\ -\infty,& j>i,\end{cases}
+\]
+which materializes the full $T\times T$ score matrix --- the $O(T^2)$ cost the
+variants in Section~\ref{sec:attn} attack.
 
-\begin{table}[h]
+\paragraph{Why these hyperparameters.} $d_{\text{model}}=256$ over $4$ layers is
+expressive enough to separate the variants while remaining trainable on a free
+GPU; $d_{\text{ff}}=1024$ follows the standard $4\times$ rule; $8$ heads at
+$d_k=32$ respect the convention of keeping head dimension $\ge 32$ for stable
+attention; pre-LayerNorm is used for training stability. The baseline has
+\textbf{\num{28937297}} parameters.
+
+\paragraph{Baseline result.} At context length 1024 the baseline reaches
+best validation PPL \textbf{240.29} (val loss 5.482), peak reserved VRAM
+\textbf{9664.7\,MB}, and throughput \textbf{15884.5}\,tokens/sec. A model that
+guessed uniformly over the $50{,}257$-token vocabulary would have
+$\text{PPL}=50{,}257$, so the baseline sits roughly $209\times$ below random,
+confirming it is learning the distribution within a short diagnostic budget.
+
+% ---------------------------------------------------------------------
+\subsection{Attention Variants}
+\label{sec:attn}
+I implement and evaluate three replacements for standard self-attention, each
+attacking a different cost, and measure all of them across context lengths
+512, 1024, and 2048.
+
+\paragraph{Sliding-Window (Local) Attention.} Each token attends only to the
+$w$ most recent tokens, $i-w < j \le i$, via a causal local-window mask. This is
+a local-connectivity ablation: it tests whether restricting attention to nearby
+tokens hurts quality. The implementation is mask-only --- it applies the window
+mask to the dense score matrix rather than using a banded kernel --- so it does
+not reduce peak memory at this scale.
+
+\paragraph{Multi-Query Attention (MQA).} All $h$ query heads share a single key
+head and a single value head~\cite{shazeer2019}, projecting $K,V$ to $d_k$
+instead of $d_{\text{model}}$:
+\[
+\text{KV cache}=2\,n_{kv}\,d_k\,T \text{ floats},\quad n_{kv}=1 \text{ (MQA)}.
+\]
+This shrinks the KV cache by a factor $h$ at inference. MQA has
+\textbf{\num{28478545}} parameters ($\num{458752}$ fewer than the baseline).
+
+\paragraph{Linear (Kernel) Attention.} Softmax is replaced by the positive
+feature map $\phi(x)=\operatorname{ELU}(x)+1$~\cite{katharopoulos2020}, so that
+\[
+\text{Attention}(Q,K,V)\;\approx\;\frac{\phi(Q)\,\big(\phi(K)^\top V\big)}
+{\phi(Q)\,\big(\phi(K)^\top \mathbf{1}\big)}.
+\]
+Computing $\phi(K)^\top V$ first avoids forming the $T\times T$ matrix, giving
+$O(Td^2)$ asymptotics. The $+1$ offset keeps $\phi$ strictly positive so the
+attention weights stay non-negative. As implemented here the causal mask is
+applied to the similarity matrix for correctness, so the long-context memory
+benefit of the streaming prefix-sum form is not yet realized.
+
+\paragraph{Results.} Table~\ref{tab:attn} reports best validation PPL, peak
+reserved VRAM, throughput, and per-epoch time for each variant and context
+length. Figures~\ref{fig:mem}--\ref{fig:attnppl} plot memory, throughput, and
+quality against context length.
+
+\begin{table}[H]
 \centering
-\caption{Training and Validation Metrics Over 5{,}000 Steps}
-\begin{tabular}{rrrrrr}
-\hline
-\textbf{Step} & \textbf{Train Loss} & \textbf{Train PPL} & \textbf{Val Loss} & \textbf{Val PPL} & \textbf{Tok/s} \\
-\hline
-250  & 7.44 & 1696.88 & 7.47 & 1759.35 & 29{,}580 \\
-500  & 6.60 & 735.60  & 6.71 & 817.41  & 29{,}258 \\
-750  & 6.08 & 436.26  & 6.23 & 508.59  & 29{,}118 \\
-1000 & 5.76 & 316.06  & 6.03 & 417.27  & 29{,}117 \\
-1250 & 5.53 & 251.85  & 5.87 & 353.61  & 29{,}033 \\
-1500 & 5.33 & 206.69  & 5.77 & 319.71  & 29{,}094 \\
-1750 & 5.15 & 172.62  & 5.66 & 288.23  & 29{,}044 \\
-2000 & 5.03 & 153.57  & 5.62 & 276.00  & 29{,}040 \\
-2250 & 4.92 & 137.67  & 5.57 & 261.15  & 29{,}130 \\
-2500 & 4.86 & 129.11  & 5.54 & 255.69  & 29{,}052 \\
-2750 & 4.73 & 112.97  & 5.48 & 239.11  & 29{,}046 \\
-3000 & 4.70 & 109.93  & 5.48 & 240.87  & 29{,}107 \\
-3250 & 4.64 & 103.94  & 5.45 & 232.15  & 29{,}115 \\
-3500 & 4.61 & 100.23  & 5.44 & 231.49  & 29{,}081 \\
-3750 & 4.56 & 95.45   & 5.45 & 232.93  & 29{,}015 \\
-4000 & 4.56 & 96.05   & 5.44 & 230.93  & 29{,}011 \\
-4250 & 4.54 & 94.15   & 5.43 & 229.01  & 29{,}072 \\
-4500 & 4.56 & 95.62   & 5.45 & 232.38  & 29{,}101 \\
-4750 & 4.51 & 90.87   & 5.45 & 231.87  & 29{,}111 \\
-5000 & 4.55 & 95.02   & 5.41 & \textbf{224.70}  & 29{,}034 \\
-\hline
+\caption{Attention variants across context length. Best validation PPL; peak
+reserved VRAM; throughput; mean epoch time. Baseline (standard attention) was
+run at 1024 only.}
+\label{tab:attn}
+\begin{tabular}{llrrrr}
+\toprule
+Variant & Ctx & Best val PPL & Peak VRAM (MB) & Throughput (tok/s) & Epoch time (s) \\
+\midrule
+Baseline (standard) & 1024 & 240.29 & 9664.7 & 15884.5 & 158.0 \\
+\midrule
+MQA            & 512  & 253.30 & 4427.8  & 18546.0 & 133.3 \\
+MQA            & 1024 & 259.43 & 9659.4  & 16220.0 & 151.0 \\
+MQA            & 2048 & 254.60 & 11976.4 & 12292.0 & 199.9 \\
+\midrule
+Linear         & 512  & 295.21 & 4466.1  & 17921.6 & 143.6 \\
+Linear         & 1024 & 249.46 & 9730.1  & 15323.0 & 163.8 \\
+Linear         & 2048 & 287.96 & 12047.1 & 11449.4 & 216.1 \\
+\midrule
+Sliding Window & 512  & 274.02 & 4433.1  & 18384.0 & 139.7 \\
+Sliding Window & 1024 & 245.75 & 9664.7  & 16194.6 & 153.9 \\
+Sliding Window & 2048 & 263.19 & 11981.7 & 12371.0 & 199.4 \\
+\bottomrule
 \end{tabular}
-\label{tab:results}
 \end{table}
 
-The model converged to a best validation perplexity of \textbf{224.70} at step 
-5{,}000, with a corresponding training perplexity of 95.02. The gap between 
-training and validation perplexity indicates mild overfitting, which is expected 
-given the relatively small model size (13.71M parameters) and limited dataset. 
-Throughput remained highly stable throughout training at approximately 
-\textbf{29{,}000 tokens/sec} on an NVIDIA Tesla T4 GPU, demonstrating consistent 
-hardware utilization. Validation perplexity improved rapidly in the early stages 
-(dropping from 1759 to 255 in the first 2{,}500 steps) before plateauing around 
-229--232 for the final 1{,}500 steps, suggesting the model had largely converged 
-by step 3{,}500.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.74\textwidth]{mem_vs_ctx.png}
+\caption{Peak reserved VRAM vs context length. Because the sliding-window mask is
+applied to a dense score matrix and the linear-attention causal mask is applied
+to the $T\times T$ similarity matrix, all three variants track one another and
+the standard baseline --- none of these implementations saves memory at this
+scale. The sub-quadratic benefit would appear only with banded / streaming
+kernels.}
+\label{fig:mem}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.74\textwidth]{tok_vs_ctx.png}
+\caption{Throughput vs context length. Throughput falls as context grows for all
+variants. The sliding-window @2048 point is omitted pending a re-run.}
+\label{fig:tok}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.74\textwidth]{ppl_vs_ctx.png}
+\caption{Best validation perplexity vs context length. The variants stay within
+a relatively narrow band, so at this budget the attention-mechanism choice has a
+modest in-distribution quality impact; sliding-window @2048 omitted pending
+re-run.}
+\label{fig:attnppl}
+\end{figure}
+
+\paragraph{Training stability.} All runs trained without NaN loss under the same
+initialization, with gradient clipping at norm 1.0 applied throughout.
+
+% ---------------------------------------------------------------------
+\subsection{Positional Encodings}
+\label{sec:pos}
+Attention is permutation-invariant, so position must be injected explicitly. I
+replace the baseline's learned absolute encoding with three alternatives and
+compare them both in-distribution (trained and evaluated at 512) and under
+length extrapolation (trained at 512, evaluated at 512/1024/2048).
+
+\paragraph{ALiBi.} Adds no positional vector; instead it biases attention logits
+by distance~\cite{press2022}:
+\[
+\alpha_{ij}=\operatorname{softmax}\!\left(\frac{q_i^\top k_j}{\sqrt{d_k}}-m_h\,|i-j|\right),
+\qquad m_h=2^{-8h/H}.
+\]
+The slopes $m_h$ are fixed (not learned), so the recency bias generalizes
+analytically to any length --- the train-short-test-long design.
+
+\paragraph{RoPE.} Rotates each query and key by a position-dependent
+angle~\cite{su2024}; because both are rotated, the score depends only on the
+relative offset:
+\[
+\langle R_m q,\,R_n k\rangle = q^\top R_{n-m} k,
+\qquad \theta_i = 10000^{-2i/d}.
+\]
+I additionally implement positional interpolation (scaling the rotation angles
+by $\text{train\_len}/\text{eval\_len}$) for context extension, used at the
+1024 and 2048 evaluations.
+
+\paragraph{Relative bias.} Learns an additive bias indexed by clipped relative
+distance~\cite{shaw2018}, so each head learns a separate bias per offset within
+a clipped range.
+
+\paragraph{In-distribution quality.} Trained and evaluated at length 512,
+Table~\ref{tab:pe} and Figure~\ref{fig:petrain} show ALiBi achieving the lowest
+best validation PPL, with RoPE close behind and relative bias well above both.
+
+\begin{table}[H]
+\centering
+\caption{Positional encoding comparison at training length 512 (best validation
+PPL; lower is better).}
+\label{tab:pe}
+\begin{tabular}{lrr}
+\toprule
+Encoding & Best val PPL & Best val loss \\
+\midrule
+ALiBi    & 214.35 & 5.3676 \\
+RoPE     & 231.15 & 5.4431 \\
+Relative & 321.87 & 5.7741 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{pe_train_ppl.png}
+\caption{In-distribution best validation PPL at train length 512. ALiBi is
+lowest, then RoPE; relative bias trails.}
+\label{fig:petrain}
+\end{figure}
+
+\paragraph{Extrapolation test.} Models trained at 512 are evaluated at 512,
+1024, and 2048 (Table~\ref{tab:extrap}, Figure~\ref{fig:extrap}). ALiBi is the
+flattest --- its PPL barely moves (and even dips slightly) out to 2048 ---
+confirming its train-short-test-long design. RoPE starts lowest at 512 but rises
+with length even with interpolation, while relative bias rises steadily and
+stays highest.
+
+\begin{table}[H]
+\centering
+\caption{Train-short-test-long: validation PPL when trained at 512 and evaluated
+at longer contexts (separate evaluation pass from Table~\ref{tab:pe}; the two
+budgets are not directly comparable). RoPE rows use positional-interpolation
+scales 0.5 and 0.25.}
+\label{tab:extrap}
+\begin{tabular}{lrrr}
+\toprule
+Encoding & Eval @512 & Eval @1024 & Eval @2048 \\
+\midrule
+ALiBi    & 238.89 & 237.09 & 236.64 \\
+RoPE     & 233.74 & 255.86 & 305.74 \\
+Relative & 322.74 & 326.16 & 334.10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.74\textwidth]{pe_extrap.png}
+\caption{Train-short-test-long extrapolation (trained at 512). ALiBi stays
+flattest across 512--2048; RoPE is lowest in-distribution but degrades with
+length despite interpolation; relative bias remains highest throughout.}
+\label{fig:extrap}
+\end{figure}
+
+\noindent\footnotesize\textit{Note: the in-distribution PPLs in
+Table~\ref{tab:pe} (best across training checkpoints) and the extrapolation PPLs
+in Table~\ref{tab:extrap} (a separate final-checkpoint evaluation pass) come
+from different measurement protocols and are not compared against each
+other.}\normalsize
+
+% ---------------------------------------------------------------------
+\subsection{Convolution + Attention Hybrids}
+\label{sec:conv}
+Self-attention is a global generalist with only a weak built-in preference for
+nearby tokens, whereas convolutions are local specialists. The hybrid gives each
+block a cheap explicit local path before global mixing, using a \emph{causal,
+depthwise-separable} 1-D convolution: a depthwise conv (one $k$-tap filter per
+channel) followed by a $1\times1$ pointwise conv. Left-padding by $k-1$ with no
+right context keeps it causal, the convolutional analogue of the causal mask.
+Its cost is $O(T\,k\,d)$, negligible beside attention.
+
+\paragraph{Designs implemented.} Two layouts are registered:
+\begin{itemize}[nosep]
+\item \texttt{conv\_prefix}: a conv sublayer is inserted \emph{before}
+self-attention inside every block ($x \to {+}\text{conv} \to {+}\text{attn} \to
+{+}\text{ffn}$), so attention always works on locally-smoothed features.
+Placing the conv first is deliberate --- placing it after would blur
+representations attention had just globally mixed.
+\item \texttt{interleaved}: whole blocks alternate, with even layers replacing
+attention by a conv token-mixer and odd layers keeping attention.
+\end{itemize}
+
+\paragraph{Configuration evaluated.} Following the assignment's "combine your
+best choices" instruction, the hybrid couples the standalone sliding-window
+attention with ALiBi positional encoding, evaluated at 512/1024/2048. The
+reported runs correspond to the \textbf{interleaved} layout (param count
+\num{28547153}; the lower @2048 memory below is consistent with half the
+attention layers being replaced by conv).%
+\footnote{The convolution metric files carried no architecture label; the
+interleaved attribution is inferred from the parameter count and the reduced
+@2048 memory and should be confirmed.}
+
+\begin{table}[H]
+\centering
+\caption{Convolutional hybrid (interleaved, Sliding Window + ALiBi) across
+context length, with the standard baseline @1024 for reference.}
+\label{tab:conv}
+\begin{tabular}{lrrrr}
+\toprule
+Config (Ctx) & Best val PPL & Peak VRAM (MB) & Throughput (tok/s) & Epoch time (s) \\
+\midrule
+Baseline (1024)       & 240.29 & 9664.7 & 15884.5 & 158.0 \\
+\midrule
+Hybrid (512)          & 242.58 & 4432.6 & 18742.0 & 130.3 \\
+Hybrid (1024)         & 234.35 & 9663.1 & 16127.0 & 151.9 \\
+Hybrid (2048)         & 240.29 & 6286.0 & 11869.0 & 203.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.74\textwidth]{conv_ppl.png}
+\caption{Convolutional hybrid best validation PPL vs context length (y-axis
+zoomed to 230--250 so the cluster is readable). The hybrid beats the standard
+baseline at 1024 (234.35 vs 240.29), showing the local conv path earns its keep
+at the short-budget objective.}
+\label{fig:conv}
+\end{figure}
+
+% ---------------------------------------------------------------------
+\subsection{Core ML Results Summary}
+\label{sec:coreml-summary}
+On \textbf{hardware}, none of the implemented attention variants reduces peak
+memory at this scale --- the mask-only sliding window and the dense-mask linear
+attention all track the standard baseline (Figure~\ref{fig:mem}) --- so the
+honest finding is that realizing sub-quadratic memory requires true banded or
+streaming kernels, which are the natural next step. On \textbf{position}, the
+two questions have two answers: ALiBi gives the lowest in-distribution PPL
+(214.35 at 512) \emph{and} extrapolates flattest (Table~\ref{tab:extrap}), while
+RoPE is competitive in-distribution but degrades with length. On
+\textbf{architecture}, interleaving a cheap local convolution with attention
+improves the short-budget objective, with the hybrid reaching the lowest PPL of
+any 1024-context run here (234.35).
+
+% =====================================================================
+\section{Sparsity \& Optimization}
+\label{sec:sando}
+\emph{[To be added: LoRA / AdaLoRA / SoRA on CoLA, proximal vs SGD-$\ell_1$
+analysis, and xLSTM / Mamba low-rank adaptation, indexed with nested
+subsections as in the reference report.]}
+
+% =====================================================================
+\begin{thebibliography}{9}
+\bibitem{vaswani2017} A. Vaswani et al. Attention is all you need. \emph{NeurIPS}, 2017.
+\bibitem{shazeer2019} N. Shazeer. Fast transformer decoding: one write-head is all you need. \emph{arXiv:1911.02150}, 2019.
+\bibitem{katharopoulos2020} A. Katharopoulos et al. Transformers are RNNs: fast autoregressive transformers with linear attention. \emph{ICML}, 2020.
+\bibitem{press2022} O. Press, N. A. Smith, M. Lewis. Train short, test long: attention with linear biases enables input length extrapolation. \emph{ICLR}, 2022.
+\bibitem{su2024} J. Su et al. RoFormer: enhanced transformer with rotary position embedding. \emph{Neurocomputing}, 568, 2024.
+\bibitem{shaw2018} P. Shaw, J. Uszkoreit, A. Vaswani. Self-attention with relative position representations. \emph{NAACL}, 2018.
+\end{thebibliography}
 
 \end{document}
